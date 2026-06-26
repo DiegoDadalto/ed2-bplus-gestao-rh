@@ -6,23 +6,33 @@
 #include <stdlib.h>
 #include "Bplus.h"
 
-Pagina *criaPagina() {
+
+// Diego
+Pagina *criaPagina(bool ehFolha) {
     Pagina *nova = (Pagina *)malloc(sizeof(Pagina));
     if (nova == NULL) {
         printf("Erro ao alocar página.");
         return NULL;
     }
     nova->numChaves = 0;
-    nova->ehFolha = true;
-    nova->ponteiros = (Pagina **)malloc((2 * ORDEM + 1) * sizeof(Pagina *));
-    nova->chaves = (void **)malloc(2 * ORDEM * sizeof(void*));
+    nova->ehFolha = ehFolha;
+    nova->ponteiroDados = (Pagina **)malloc((MAX_CHAVES_FOLHA + 1) * sizeof(Pagina *));
+    nova->chaves = (void **)malloc(MAX_CHAVES_FOLHA * sizeof(void*));
     nova->proximo = NULL;
+    nova->anterior = NULL;
 
     return nova;
 }
 
+// Diego
 void liberaPagina(Pagina *pagina) {
     if (pagina->ponteiros != NULL) free(pagina->ponteiros);
+    
+    for (int i = 0; i < MAX_CHAVES_FOLHA + 1; i++) {
+        if (pagina->ponteiroDados[i] != NULL) {
+            free(pagina->ponteiroDados[i]);
+        }
+    }
 
     for (int i = 0; i < pagina->numChaves; i++) {
         if (pagina->chaves[i] != NULL) {
@@ -32,9 +42,12 @@ void liberaPagina(Pagina *pagina) {
     free(pagina->chaves);
 
     if (pagina->proximo != NULL) free(pagina->proximo);
+    if (pagina->anterior != NULL) free(pagina->proximo);
     free(pagina);
 }
 
+
+// Diego
 void liberaBplus(Pagina *raiz) {
     if (raiz == NULL) return;
 
@@ -47,55 +60,91 @@ void liberaBplus(Pagina *raiz) {
     liberaPagina(raiz);
 }
 
-bool comparaChaves(void *chave, void *chavePagina, int direcao){
-    
+// Sol
+bool comparaChaves(int *chave, int *chavePagina){
+    if(chave <= chavePagina) return true;
+    else 
+        return false;
 }
 
+// Diego e Julia
 void *buscaBplus(Pagina *raiz, void *chave) {
-    void *retorno[2];
+    void *retorno[3];
     for (int i = 0; i < raiz->numChaves; i++) {
         if (chave > raiz->chaves[i] && !raiz->ehFolha) {
             buscaBplus(raiz->ponteiros[i], chave); 
         }
 
         if (chave == raiz->chaves[i] && raiz->ehFolha) {
-            retorno[0] = (void*)raiz;
-            retorno[1] = chave; 
+            retorno[0] = (void*)raiz; // pagina onde esta a chave
+            retorno[1] = (void*)i; // pos da pagina onde esta a chave
+            retorno[2] = (void*)1; // chave encontrada
+            return retorno;
+        } else {
+            retorno[0] = (void*)raiz; // pagina onde deveria estar a chave
+            retorno[1] = (void*)i; // pos da pagina onde deveria estar a chave
+            retorno[2] = (void*)0; // chave nao encontrada
             return retorno;
         }
     }
 }
 
-// Julia vai terminar a insercao
-void insereBplus(Pagina *raiz, void *chave, int* flagEncontrado) {
-    // "pilha" para manter a referência para a página mãe
-    int q = raiz->numChaves; // [Diego] tentem não usar variáveis de uma letra só gente
+Pagina* buscaMae(Pagina *raiz, Pagina *filha) {
     for (int i = 0; i < raiz->numChaves; i++) {
-
-        // se a chave a ser inserida é menor ou igual a chave na pagina
-        if(comparaChaves(chave, raiz->chaves[i], 0)){
-            insereBplus(raiz->ponteiros[i], chave, flagEncontrado);
-        }
-        
-        // se a chave a ser inserida é maior que a chave na pagina
-        if(comparaChaves(chave, raiz->chaves[i], 1)){
-            insereBplus(raiz->ponteiros[i], chave, flagEncontrado);
+        if (filha == raiz->ponteiros[i]) {
+            return raiz;
         }
     }
 }
 
-void cisao(Pagina *paginaMae, Pagina *paginaFilha, int posFilha) {
-    Pagina *nova = criaPagina();
-    nova->numChaves = ORDEM;
+// Julia
+void verificaInsercao(Pagina *raiz, void *chave) {
+    void* resultadoBusca = buscaBplus(raiz, chave);
+    int encontrado = (int)resultadoBusca[2];
+    if (encontrado == 1) {
+        printf("Chave ja existente na arvore.\n");
+        return;
+    } else {
+        // TERMINAR
+        /* inserir na pagina correspondente de resultadoBusca[0]
+        na posicao da pagina correspondente a resultadoBusca[1] */
+    }
+}
 
-    for (int i = 0; i < ORDEM; i++) {
-        nova->chaves[i] = paginaFilha->chaves[i + ORDEM + 1]; // Transpõe as chaves da página sofrendo cisão para a nova página
+// Julia
+void executaInsercao(Pagina *pg, int posicaoNaPagina, i *chave) {
+    if (pg->numChaves > MAX_CHAVES_FOLHA) {
+        // redistribuicao com a pagina irma ou nova pagina criada (?)
+    } else {
+        int i = pg->numChaves;
+        pg->chaves[i + 1] = chave;
+        // ordenar as chaves na folha (algum algoritmo de ordenacao???)
+        // inserir um novo ponteiro de dado (o ponteiro 'proximo' tambem eh modificado?)
+    }
+}
+
+// Diego
+void cisao(Pagina *paginaMae, Pagina *paginaFilha, int posFilha) {
+    Pagina *nova = NULL;
+    
+    if (paginaFilha->ehFolha) {
+        Pagina *nova = criaPagina(true);
+        nova->numChaves = ORDEM_FOLHA;
+    }
+    else {
+        Pagina *nova = criaPagina(false);
+        nova->numChaves = ORDEM_INTERNA;
+    }
+    
+
+    for (int i = 0; i < nova->numChaves; i++) {
+        nova->chaves[i] = paginaFilha->chaves[i + nova->numChaves + 1]; // Transpõe as chaves da página sofrendo cisão para a nova página
         paginaFilha->numChaves--;
     }
 
     if (!paginaFilha->ehFolha) {
-        for (int i = 0; i < ORDEM; i++) {
-            nova->ponteiros[i] = paginaFilha->ponteiros[i + ORDEM + 1]; // Transpõe os ponteiros da página sofrendo cisão para a nova página
+        for (int i = 0; i < ORDEM_INTERNA; i++) {
+            nova->ponteiros[i] = paginaFilha->ponteiros[i + ORDEM_INTERNA + 1]; // Transpõe os ponteiros da página sofrendo cisão para a nova página
         }
     }
 
@@ -110,12 +159,48 @@ void cisao(Pagina *paginaMae, Pagina *paginaFilha, int posFilha) {
         paginaMae->chaves[i + 1] = paginaMae->chaves[i];
     }
 
-    paginaMae->chaves[posFilha] = paginaFilha->chaves[ORDEM]; // Insere a chave intermediária da página filha no espaço adjacente a ambos os ponteiros das páginas filhas
+    paginaMae->chaves[posFilha] = paginaFilha->chaves[nova->numChaves]; // Insere a chave intermediária da página filha no espaço adjacente a ambos os ponteiros das páginas filhas
     paginaMae->numChaves++;
 }
 
-void removeBplus(Pagina *raiz, void *chave) {
-    void *info = buscaBplus(raiz, chave);
 
+
+// Sol
+bool redistribuicao(Pagina *paginaChaveRemovida, Pagina *paginaMae, Pagina *paginaIrma, bool direcaoPaginaIrma, int posMae){
+    
+    if(direcaoPaginaIrma){ 
+        // Irma a direita
+        
+        paginaChaveRemovida->chaves[paginaChaveRemovida->numChaves + 1] = paginaMae->chaves[posMae];
+        paginaChaveRemovida->numChaves++;
+        paginaMae->chaves[posMae] = paginaIrma->chaves[0];
+        removeBplus(paginaIrma, paginaIrma->chaves[0]);
+    } else {
+        // Irma a esquerda
+
+        paginaChaveRemovida->chaves[paginaChaveRemovida->numChaves + 1] = paginaMae->chaves[posMae];
+        paginaChaveRemovida->numChaves++;
+        paginaMae->chaves[posMae] = paginaIrma->chaves[0];
+        removeBplus(paginaIrma, paginaIrma->chaves[0]);
+    }
+}
+
+// Diego
+void removeBplus(Pagina *raiz, void *chave) {
+    void *info[2] = buscaBplus(raiz, chave);
+    Pagina *localArvore = (Pagina*)info[0];
+    int posicaoVetorChaves = *((int*)info[1]);
+    
+    for (int i = posicaoVetorChaves + 1; i < localArvore->numChaves; i++) {
+        localArvore->ponteiroDados[i - 1] = localArvore->ponteiroDados[i];
+        localArvore->ponteiros[i - 1] = localArvore->ponteiros[i];
+    }
+    localArvore->numChaves--;
+
+    if (localArvore->numChaves < ORDEM_FOLHA) {
+        if (localArvore->anterior->numChaves + localArvore->numChaves == ORDEM_FOLHA + 1) {
+            // redistribuicao(localArvore, )
+        }
+    }
     
 }
